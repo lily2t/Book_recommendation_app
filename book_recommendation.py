@@ -1,9 +1,13 @@
 """
 This application will help the user by recommending a book by taking the user's preferences.
+The application will ask the user to provide their preferences then will check for most relevant(similar)
+books from an api of the open library, then suggest the user with three books of most convenient. 
 """
 # Import necessary libraries
-
-# Define classes and functions
+import requests
+"""
+Here i will implement OOP(object oriented programming) concept of python to identify the actors of the application.
+"""
 
 
 class Book:
@@ -22,11 +26,34 @@ class User:
         self.preferences.append(preference)
 
 # Load book data from a file or API
+def load_books(genres, authors):
+    books = []
+    #iterate through the books data
+    for genre in genres:
+        genre_books = fetch_books_by_genre(genre)
+        
+        for book_info in genre_books:
+            title = book_info.get("title", "")
+            author = book_info.get("authors", [{}])[0].get("name", "")
+            genres = book_info.get("subjects", [])
+
+            book = Book(title=, author, genres)
+
+            books.appen(book)
+
+    return books        
 
 
-def load_books():
+def fetch_books_by_genre(genre):
     # Load book data from a file or API
-    pass
+    url = f"http://openlibrary.org/subjects/{genre}.json"
+    response = requests.get(url)
+    if response.status.code ==200:
+        data = response.json()
+        return data
+    else:
+        print("Error accuored while fetching books by genre.")
+        return None
 
 
 def preprocess_books(books):
@@ -45,7 +72,10 @@ def recommend_books(user, books):
 
 def get_user_preferences():
     # Collect user preferences (genres, authors, etc.) from the user
-    pass
+    genres = input("Enter you preferred genres: ").split(",")
+    authors = input("Enter your preferred authors name: ").split(",")
+
+    return genres, authors
 
 
 def display_recommendations(recommendations):
