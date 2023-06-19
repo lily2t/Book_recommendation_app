@@ -5,20 +5,16 @@ user to provide their preferences then will check for most relevant(similar)
 books from an api of the open library, then suggest the user with three books of 
 most convenient. 
 """
-# Import necessary libraries
 import requests
-
-"""
-Here i will implement OOP(object oriented programming) concept of python to 
-identify the actors of the application.
-"""
+import webbrowser
 
 
 class Book:
-    def __init__(self, title, author, genres):
+    def __init__(self, title, author, subjects, key):
         self.title = title
         self.author = author
-        self.genres = genres
+        self.subjects = subjects
+        self.key = key
 
 
 class User:
@@ -30,111 +26,88 @@ class User:
         self.preferences.append(preference)
 
 
-# Load book data from a file or API
-def load_books(genres, authors):
-    books = []
-    # iterate through the books data
-    for genre in genres:
-        genre_books = fetch_books_by_genre(genre)
-
-        if isinstance(genre_books, list):
-            # Iterate through the books in the genre
-            for book_info in genre_books:
-                if isinstance(book_info, dict):
-                    title = book_info.get("title", "")
-                    author = book_info.get("authors", [{}])[0].get("name", "")
-                    genres = book_info.get("subjects", [])
-
-                    book = Book(title, author, genres)
-                    books.append(book)
-                else:
-                    print("Invalid book information:", book_info)
-        else:
-            print("Invalid genre books:", genre_books)
-
-    return books
-
-
 def fetch_books_by_genre(genre):
-    # Load book data from a file or API
-    url = f"http://openlibrary.org/subjects/{genre}.json"
+    url = f"https://openlibrary.org/subjects/{genre}.json?limit=5"
     response = requests.get(url)
+
     if response.status_code == 200:
         data = response.json()
-        if isinstance(data, dict) and "works" in data:
+        if "works" in data:
             books = data["works"]
             return books
         else:
             print("Invalid genre books:", data)
     else:
-        print("Facing problems while loading the API.")
+        print("Error loading the API.")
     return None
 
 
-# here we clean and organize our data before any recommendation
-def preprocess_books(books, user):
-    # Preprocess the book data (cleaning, organizing, etc.)
-    filtered_books = []
+def load_books(genres):
+    books = []
+    for genre in genres:
+        genre_books = fetch_books_by_genre(genre)
+        if isinstance(genre_books, list):
+            for book_info in genre_books:
+                if isinstance(book_info, dict):
+                    title = book_info.get("title", "")
+                    author_info = book_info.get("authors", [])
+                    author = author_info[0].get("name", "") if author_info else ""
+                    subjects = book_info.get("subject", [])
+                    key = book_info.get("key", "")
+                    book = Book(title, author, subjects, key)
+                    books.append(book)
+                else:
+                    print("Invalid book information:", book_info)
+        else:
+            print("Invalid genre books:", genre_books)
+    return books
 
+
+def preprocess_books(books, user):
+    filtered_books = []
     for book in books:
-        if any(genre in book.genres for genre in user.preferences):
+        if any(genre in book.subjects for genre in user.preferences):
             filtered_books.append(book)
     return filtered_books
 
 
-# Here we recommend the user by using popularity based filtering.
 def recommend_books(user, books):
-    # Sort books by popularity
-    sorted_books = sorted(books, key=lambda x: len(x.editions), reverse=True)
-
-    # Select the top three books
-    recommendations = sorted_books[:4]
-
+    sorted_books = sorted(books, key=lambda x: len(x.subjects), reverse=True)
+    recommendations = sorted_books[:3]
     return recommendations
 
 
-# User interface
 def get_user_preferences():
-    # Collect user preferences (genres, authors, etc.) from the user
-    genres = input("Enter you preferred genres: ").split(",")
-    authors = input("Enter your preferred authors name: ").split(",")
+    name = input("Enter your name: ")
 
-    return genres, authors
+    while True:
+        genres = input("Enter your preferred genres (comma-separated): ").split(",")
+        if genres:
+            break
+        else:
+            print("Invalid input. Please enter at least one genre.")
+
+    return name, genres
 
 
-# here we display the recommended books to the user
 def display_recommendations(recommendations):
-    # Display the recommended books to the user
-    print("Here are the books i recommend you: ")
+    print("Here are the books I recommend you:")
     for i, book in enumerate(recommendations, start=1):
         print(f"{i}. {book.title} by {book.author}")
+        print("   Opening Open Library page...")
+        webbrowser.open_new_tab(f"https://openlibrary.org{book.key}")
 
 
 def main():
-    name = input("Enter your name? ")
-
-    # Create user
+    name, genres = get_user_preferences()
     user = User(name)
-
-    genres, authors = get_user_preferences()
-    books = load_books(genres, authors)
-
-    # Preprocess books
-    preprocessed_books = preprocess_books(books, user)
-
-    # Get user preferences
-    user_preferences = get_user_preferences()
-
-    for preference in user_preferences:
+    books = load_books(genres)
+    for preference in genres:
         user.add_preference(preference)
-
-    # Generate book recommendations
+    preprocessed_books = preprocess_books(books, user)
     recommendations = recommend_books(user, preprocessed_books)
-
-    # Display recommendations
     display_recommendations(recommendations)
 
 
-# Entry point
 if __name__ == "__main__":
     main()
